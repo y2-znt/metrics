@@ -37,6 +37,7 @@ jobs:
           plugin_languages_limit: 8
           plugin_languages_recent_categories: markup, programming
           plugin_notable: yes
+          plugin_notable_organizations_skipped: mugetsudotdev
       - uses: lowlighter/metrics@latest
         with:
           filename: metrics.plugin.wakatime.svg
