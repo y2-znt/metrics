@@ -1,0 +1,31 @@
+query NotableHistory {
+  user(login: "$login") {
+    contributionsCollection(from: "$from", to: "$to") {
+      commitContributionsByRepository(maxRepositories: 100) {
+        repository {
+          isInOrganization
+          owner {
+            login
+            avatarUrl
+          }
+          nameWithOwner
+          watchers {
+            totalCount
+          }
+          forks {
+            totalCount
+          }
+          stargazers {
+            totalCount
+          }
+          issues {
+            totalCount
+          }
+          pullRequests {
+            totalCount
+          }
+        }
+      }
+    }
+  }
+}
