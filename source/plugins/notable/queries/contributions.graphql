@@ -28,5 +28,32 @@ query NotableContributions {
         }
       }
     }
+    contributionsCollection(from: "2008-01-01T00:00:00Z") {
+      commitContributionsByRepository(maxRepositories: 100) {
+        repository {
+          isInOrganization
+          owner {
+            login
+            avatarUrl
+          }
+          nameWithOwner
+          watchers {
+            totalCount
+          }
+          forks {
+            totalCount
+          }
+          stargazers {
+            totalCount
+          }
+          issues {
+            totalCount
+          }
+          pullRequests {
+            totalCount
+          }
+        }
+      }
+    }
   }
 }
