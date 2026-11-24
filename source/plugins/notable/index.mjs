@@ -13,18 +13,41 @@ export default async function({login, q, imports, rest, graphql, data, account, 
     //Iterate through contributed repositories
     let contributions = []
     {
+      const historical = []
+      if (types.includes("commit")) {
+        const currentYear = new Date().getUTCFullYear()
+        for (let year = 2008; year <= currentYear; year++) {
+          const from = `${year}-01-01T00:00:00Z`
+          const to = `${year + 1}-01-01T00:00:00Z`
+          console.debug(`metrics/compute/${login}/plugins > notable > retrieving historical commit contributions for ${year}`)
+          const {user: {contributionsCollection: {commitContributionsByRepository = []}}} = await graphql(queries.notable.history({login, from, to}))
+          historical.push(...commitContributionsByRepository.map(({repository}) => repository))
+        }
+      }
       let cursor = null
       let pushed = 0
+      const seen = new Set()
       do {
         console.debug(`metrics/compute/${login}/plugins > notable > retrieving contributed repositories after ${cursor}`)
-        const {user: {repositoriesContributedTo: {edges}}} = await graphql(queries.notable.contributions({login, types: types.map(x => x.toLocaleUpperCase()).join(", "), after: cursor ? `after: "${cursor}"` : "", self, repositories: data.shared["repositories.batch"] || 100}))
+        const {user: {repositoriesContributedTo: {edges = []}}} = await graphql(queries.notable.contributions({login, types: types.map(x => x.toLocaleUpperCase()).join(", "), after: cursor ? `after: "${cursor}"` : "", self, repositories: data.shared["repositories.batch"] || 100}))
         cursor = edges?.[edges?.length - 1]?.cursor
-        edges
-          .filter(({node}) => imports.filters.repo(node, skipped))
-          .filter(({node}) => !node.isInOrganization || imports.filters.organization(node.owner.login, organizationsSkipped))
-          .filter(({node}) => ({all: true, organization: node.isInOrganization, user: !node.isInOrganization}[from]))
-          .filter(({node}) => imports.filters.github(filter, {name: node.nameWithOwner, user: node.owner.login, stars: node.stargazers.totalCount, watchers: node.watchers.totalCount, forks: node.forks.totalCount}))
-          .map(({node}) => contributions.push({handle: node.nameWithOwner, stars: node.stargazers.totalCount, issues: node.issues.totalCount, pulls: node.pullRequests.totalCount, organization: node.isInOrganization, avatarUrl: node.owner.avatarUrl}))
+        const nodes = [
+          ...historical,
+          ...edges.map(({node}) => node),
+        ]
+        nodes
+          .filter(node => {
+            if (seen.has(node.nameWithOwner))
+              return false
+            seen.add(node.nameWithOwner)
+            return true
+          })
+          .filter(node => self || node.owner.login.toLocaleLowerCase() !== login.toLocaleLowerCase())
+          .filter(node => imports.filters.repo(node, skipped))
+          .filter(node => !node.isInOrganization || imports.filters.organization(node.owner.login, organizationsSkipped))
+          .filter(node => ({all: true, organization: node.isInOrganization, user: !node.isInOrganization}[from]))
+          .filter(node => imports.filters.github(filter, {name: node.nameWithOwner, user: node.owner.login, stars: node.stargazers.totalCount, watchers: node.watchers.totalCount, forks: node.forks.totalCount}))
+          .map(node => contributions.push({handle: node.nameWithOwner, stars: node.stargazers.totalCount, issues: node.issues.totalCount, pulls: node.pullRequests.totalCount, organization: node.isInOrganization, avatarUrl: node.owner.avatarUrl}))
         pushed = edges.length
       }
       while ((pushed) && (cursor))
